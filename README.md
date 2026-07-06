@@ -1,40 +1,70 @@
-# FastMCP Example Project 🚀
+# FastMCP + FastAPI Example Project 🚀
 
-This repository contains a simple client-server setup demonstrating the power of the **Model Context Protocol (MCP)** using the `fastmcp` Python library.
+This repository contains a client-server setup demonstrating the integration of the **Model Context Protocol (MCP)** using the `fastmcp` Python library, hosted within a **FastAPI** application with **JWT Authentication**.
 
 ## 📁 Structure
-- `mcp_server/`: Contains the FastMCP server setup (`main.py`) which exposes tools, resources, and prompts. Also contains a `docs/` folder for reading local files.
-- `client/`: Contains the MCP Client (`main.py`) which connects to the server and invokes these endpoints over HTTP.
+- `mcp_server/`: Contains the unified FastAPI & FastMCP server (`main.py`). It exposes a `/login` endpoint for authentication, standard REST APIs (like `/users/me`), and mounts the MCP tools under `/mcp`. Also contains a `docs/` folder for reading local files.
+- `client/`: Contains the MCP Client (`main.py`) which first authenticates via HTTP to get a JWT token, and then connects to the server to invoke endpoints.
 
 ## 🚀 Features Demonstrated
-1. **Tools (`@mcp.tool`)**: 
+1. **Hybrid FastAPI + FastMCP Server**:
+   - Sharing Lifespans between FastAPI and FastMCP.
+   - JWT Authentication (`TokenVerifier`) protecting both REST APIs and MCP Tools.
+2. **Tools (`@mcp.tool`)**: 
    - Exposing functions that AI agents or clients can invoke (e.g., `add`, `list_employees`, `greet`).
-2. **Resources (`@mcp.resource`)**:
-   - Reading static resources like a company handbook.
-   - Reading dynamic resources using parameters (e.g., `employee://{employee_id}`).
-3. **Prompts (`@mcp.prompt`)**:
-   - Serving predefined, parameterized prompts ready for LLM consumption (e.g., `summarize`, `code_review`).
+3. **Resources (`@mcp.resource`)**:
+   - Reading static and dynamic resources.
+4. **Prompts (`@mcp.prompt`)**:
+   - Serving predefined, parameterized prompts ready for LLM consumption.
+
+## 🔐 Authentication Workflow
+
+This project implements a unified JWT authentication mechanism where FastAPI handles the login logic (issuing tokens) and FastMCP validates them automatically.
+
+```mermaid
+sequenceDiagram
+    participant C as Client (AI Agent)
+    participant FA as FastAPI Server
+    participant MCP as FastMCP (JWTVerifier)
+
+    Note over C, FA: 1. Authentication Phase
+    C->>FA: POST /login (username, password)
+    FA-->>C: 200 OK + JWT Access Token
+
+    Note over C, MCP: 2. MCP Communication Phase
+    C->>MCP: Streamable HTTP Request to /mcp <br/>(Header: Authorization: Bearer {token})
+    MCP->>MCP: Decode & Verify Token (SECRET_KEY)
+    
+    alt Token Valid
+        MCP-->>C: Return Tools / Execute Actions
+    else Token Invalid / Missing
+        MCP-->>C: 401 Unauthorized / 421 Misdirected Request
+    end
+```
+
+## 📝 Prerequisites
+- Python 3.10+
+- Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
 ## 🛠️ How to Run
 
 ### 1. Start the Server
-Navigate to the server directory and run the server script:
+Run the server script from the root directory:
 ```bash
-cd mcp_server
-python main.py
+python -m mcp_server.main
 ```
-*The server will start listening on `http://0.0.0.0:8000/mcp` using the streamable-http transport.*
+*The server will start listening on `http://127.0.0.1:8000`.*
+- *FastAPI Docs (Swagger UI): `http://127.0.0.1:8000/docs`*
+- *MCP Endpoint: `http://127.0.0.1:8000/mcp`*
 
 ### 2. Run the Client
-Open a new terminal window, navigate to the client directory, and run the client script:
+Open a new terminal window and run the client script from the root directory:
 ```bash
-cd client
-python main.py
+python client/main.py
 ```
-*The client will connect, list all available endpoints, and print beautifully formatted results for tools, resources, and prompts.*
+*The client will connect to the `/login` endpoint to get a Token, then connect to the MCP endpoint, list all available endpoints, and print the results.*
 
-## 📝 Prerequisites
-- Python 3.10+
-- `fastmcp` (install via `pip install fastmcp`)
-
-Enjoy building context-aware AI tools!
+Enjoy building secure, context-aware AI tools!
